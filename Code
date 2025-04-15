@@ -552,3 +552,287 @@ rfc_model = RandomForestClassifier(n_estimators = 200,criterion="gini",random_st
 y_pred = rfc_model.predict(X_test)
 y_prob = rfc_model.predict_proba(X_test)[:, 1]
 
+# Get tn, fp, fn, tp from the confusion matrix
+tn, fp, fn, tp = confusion_matrix(y_test, y_pred).ravel()
+
+
+
+#Create Confusion Matrix
+rf_cmlist = pd.crosstab(y_test, y_pred, rownames=['Actual'], colnames=['Predicted'])
+print("\nConfusion Matrix:")
+rf_cmlist ['Total'] = rf_cmlist .sum(axis =1);rf_cmlist .loc['Total'] = rf_cmlist .sum();rf_cmlist
+
+
+# Calculate metrics
+accuracy = accuracy_score(y_test, y_pred)
+error_rate = 1 - accuracy
+Precision = precision_score(y_test, y_pred, zero_division=0)
+recall = recall_score(y_test, y_pred, zero_division=0)
+f1 = f1_score(y_test, y_pred, zero_division=0)
+specificity = tn / (tn + fp) if (tn + fp) > 0 else 0
+roc_auc = roc_auc_score(y_test, y_prob)
+
+
+#Build evaluation table
+eval_table_rfc = pd.DataFrame({
+    'Forest': [
+        round(accuracy, 3),
+        round(error_rate, 3),
+        round(Precision, 3),
+        round(recall, 3),
+        round(specificity, 3),
+        round(f1, 3),
+        round(roc_auc, 3)]
+}, index=['Accuracy', 'Error Rate', 'Precision', 'Specificity','Recall', 'F1', 'ROC AUC'])
+
+print(eval_table_rfc)
+
+
+from sklearn.naive_bayes import GaussianNB
+from sklearn.metrics import confusion_matrix, classification_report, accuracy_score, precision_score, recall_score, f1_score
+
+# Train the Naive Bayes model
+nb_model = GaussianNB()
+nb_model.fit(X_train_resampled, y_train_resampled)
+
+
+# Make predictions
+y_pred = nb_model.predict(X_test)
+y_pred_prob = nb_model.predict_proba(X_test)[:, 1]
+
+
+#Create Confusion Matrix
+conf_matrix = pd.crosstab(y_test, y_pred, rownames=['Actual'], colnames=['Predicted'])
+print("\nConfusion Matrix:")
+conf_matrix['Total'] = conf_matrix.sum(axis =1);conf_matrix.loc['Total'] = conf_matrix.sum();conf_matrix
+
+
+
+# Calculate metrics
+accuracy = accuracy_score(y_test, y_pred)
+error_rate = 1 - accuracy
+Precision = precision_score(y_test, y_pred, zero_division=0)
+recall = recall_score(y_test, y_pred, zero_division=0)
+f1 = f1_score(y_test, y_pred, zero_division=0)
+specificity = tn / (tn + fp) if (tn + fp) > 0 else 0
+roc_auc = roc_auc_score(y_test, y_prob)
+
+#Build evaluation table
+eval_table_nbc = pd.DataFrame({
+    'Naive Bayes': [
+        round(accuracy, 3),
+        round(error_rate, 3),
+        round(Precision, 3),
+        round(recall, 3),
+        round(specificity, 3),
+        round(f1, 3),
+        round(roc_auc, 3)]
+}, index=['Accuracy', 'Error Rate', 'Precision', 'Specificity', 'Recall', 'F1', 'ROC AUC'])
+
+print(eval_table_nbc)
+
+print(y_train_resampled.value_counts())
+print(y_test.value_counts())
+
+
+import statsmodels.api as sm
+import pandas as pd
+
+# Ensure everything is numeric
+X_train_log = sm.add_constant(X_train_resampled).astype(float)
+y_train_log = pd.Series(y_train_resampled).astype(float)
+
+# Fit logistic regression on training data
+logreg01 = sm.Logit(y_train_log, X_train_log).fit()
+print("\n--- Logistic Regression Summary (TRAINING DATA) ---")
+print(logreg01.summary2())
+
+# Prepare test data
+X_test_log = sm.add_constant(X_test).astype(float)
+y_test_log = pd.Series(y_test).astype(float)
+
+# Fit logistic regression on test data
+logreg01_test = sm.Logit(y_test_log, X_test_log).fit()
+print("\n--- Logistic Regression Summary (TEST DATA) ---")
+print(logreg01_test.summary2())
+
+def logistic_equation_latex(coefficients):
+    equation = r"\log\left(\frac{p}{1 - p}\right) = "
+    terms = [f"{coef:.3f}" if i == 'const' else f"{coef:.3f} \\cdot {i}" for i, coef in coefficients.items()]
+    return equation + " + ".join(terms)
+
+def logistic_equation_latex_clean(coefficients, chunk_size=3):
+    terms = []
+    for var, coef in coefficients.items():
+        if var == 'const':
+            terms.append(f"{coef:.3f}")
+        else:
+            sign = '+' if coef >= 0 else '-'  # handle negative signs
+            coef_abs = abs(coef)
+            terms.append(f"{sign} {coef_abs:.3f} \\cdot \\text{{{var}}}")
+
+    # Break into chunks for line wrapping
+    lines = [terms[i:i+chunk_size] for i in range(0, len(terms), chunk_size)]
+    latex_lines = ["    " + " ".join(line) + r"\\" for line in lines]
+
+    latex_eq = (
+        r"\begin{align*}" + "\n"
+        r"\log\left(\frac{p}{1 - p}\right) = " + "\n" +
+        "\n".join(latex_lines) +
+        r"\end{align*}"
+    )
+    return latex_eq
+
+# Generate LaTeX equation from training model
+coefficients = logreg01.params
+latex_eq = logistic_equation_latex_clean(coefficients)
+
+print("\n--- Logistic Regression Equation (LaTeX, Multiline) ---")
+print(latex_eq)
+
+
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix, roc_curve, auc
+import plotly.graph_objects as go
+
+
+y_pred_proba = logreg01.predict(X_test_log)
+
+y_pred = (y_pred_proba >= 0.5).astype(int)
+
+
+TN, FP, FN, TP = confusion_matrix(y_test_log, y_pred).ravel()
+
+accuracy = accuracy_score(y_test_log, y_pred)
+error_rate = 1 - accuracy
+sensitivity = recall_score(y_test_log, y_pred)  # aka recall
+specificity = TN / (TN + FP)
+precision = precision_score(y_test_log, y_pred)
+f1 = f1_score(y_test_log, y_pred)
+
+print("\n--- Model Evaluation on Test Data ---")
+print(f"Accuracy:    {accuracy:.4f}")
+print(f"Error Rate:  {error_rate:.4f}")
+print(f"Sensitivity: {sensitivity:.4f}")
+print(f"Specificity: {specificity:.4f}")
+print(f"Precision:   {precision:.4f}")
+print(f"F1 Score:    {f1:.4f}")
+
+
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+
+df = pd.DataFrame({
+    'Stage': ['Before SMOTE', 'Before SMOTE', 'After SMOTE', 'After SMOTE'],
+    'Entrepreneurship': ['0', '1', '0', '1'],
+    'Count': [2994, 756, 2994, 2994]
+})
+
+# Custom color palette
+color_map = {'0': '#CD4246', '1': '#2D72D2'}
+
+# Plot
+plt.figure(figsize=(10, 6))
+barplot = sns.barplot(
+    data=df,
+    x='Stage',
+    y='Count',
+    hue='Entrepreneurship',
+    palette=color_map,
+    edgecolor='black',
+    linewidth=1.5
+)
+
+# Title and labels (no font override)
+barplot.set_title('Entrepreneurship Distribution Before and After SMOTE', fontsize=14)
+barplot.set_xlabel('Stage', fontsize=12)
+barplot.set_ylabel('Count', fontsize=12)
+barplot.tick_params(labelsize=11)
+
+# Legend on the right
+plt.legend(
+    title='Entrepreneurship',
+    title_fontsize=11,
+    fontsize=10,
+    loc='center left',
+    bbox_to_anchor=(1.02, 0.5),
+    borderaxespad=0
+)
+
+# Layout tweaks
+sns.despine()
+plt.tight_layout()
+plt.show()
+
+
+
+
+from sklearn.metrics import roc_curve, auc
+import plotly.graph_objects as go
+
+
+
+y_test_rf = y_test.copy()
+y_test_nb = y_test.copy()
+y_test_cart = y_test.copy()
+y_test_xgb = y_test.copy()
+
+
+# Create dictionary to hold model names and (fpr, tpr, auc) tuples
+roc_data = {}
+
+# Logistic Regression (statsmodels)
+fpr_log, tpr_log, _ = roc_curve(y_test_log, logreg01.predict(X_test_log))
+roc_data["Logistic Regression"] = (fpr_log, tpr_log, auc(fpr_log, tpr_log))
+
+# CART
+fpr_cart, tpr_cart, _ = roc_curve(y_test_cart, cart_model_clean02.predict_proba(X_cart_test)[:, 1])
+roc_data["CART"] = (fpr_cart, tpr_cart, auc(fpr_cart, tpr_cart))
+
+# XGBoost
+fpr_xgb, tpr_xgb, _ = roc_curve(y_test_xgb, xgb_model.predict_proba(X_test)[:, 1])
+roc_data["XGBoost"] = (fpr_xgb, tpr_xgb, auc(fpr_xgb, tpr_xgb))
+
+# Random Forest
+
+fpr_rf, tpr_rf, _ = roc_curve(y_test_rf, rfc_model.predict_proba(X_test)[:, 1])
+roc_data["Random Forest"] = (fpr_rf, tpr_rf, auc(fpr_rf, tpr_rf))
+
+# Naive Bayes
+fpr_nb, tpr_nb, _ = roc_curve(y_test, nb_model.predict_proba(X_test)[:, 1])
+roc_data["Naive Bayes"] = (fpr_nb, tpr_nb, auc(fpr_nb, tpr_nb))
+
+# Create Plotly figure
+fig = go.Figure()
+
+# Add each model's ROC curve
+for model_name, (fpr, tpr, model_auc) in roc_data.items():
+    fig.add_trace(go.Scatter(
+        x=fpr, y=tpr,
+        mode='lines',
+        name=f"{model_name} (AUC = {model_auc:.2f})",
+        line=dict(width=2)
+    ))
+
+# Add diagonal reference line
+fig.add_trace(go.Scatter(
+    x=[0, 1], y=[0, 1],
+    mode='lines',
+    line=dict(dash='dash', color='gray'),
+    showlegend=False
+))
+
+# Update layout
+fig.update_layout(
+    title="ROC Curve Comparison Across Models",
+    xaxis_title="False Positive Rate",
+    yaxis_title="True Positive Rate",
+    width=800,
+    height=600,
+    font=dict(family="Arial", size=14),
+    legend=dict(x=0.65, y=0.05, bgcolor='rgba(255,255,255,0.5)')
+)
+
+fig.show()
+
