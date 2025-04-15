@@ -1,0 +1,554 @@
+import pandas as pd
+import kagglehub
+import os
+import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
+import seaborn as sns
+from sklearn.model_selection import train_test_split
+import random
+from scipy import stats
+
+# Download dataset
+file_path = kagglehub.dataset_download("adilshamim8/education-and-career-success")
+
+# List all files in the downloaded directory
+files = os.listdir(file_path)
+print("Files in the dataset directory:", files)
+
+# Select the first CSV file (assuming it exists)
+csv_file = [f for f in files if f.endswith(".csv")][0]  # Get the first CSV file
+
+# Load our file the dataset
+data = pd.read_csv(os.path.join(file_path, csv_file))
+
+# Print the first few rows of our dataset
+print("First 5 rows of the dataset:")
+
+#LS: I changed the print statement with display()
+display(data.head())
+
+# Count the missing values per variable in our dataset
+missing_values = data.isnull().sum()
+
+print('Missing Values Per Column')
+print(missing_values)
+
+#lets check if there any duplicates in dataset
+data.duplicated().sum()
+
+# lets create temporary fields called Starting_Salary_z
+
+data['Starting_Salary_z'] = stats.zscore(data['Starting_Salary'])
+
+
+## identify outliers whose salary condition meet as 'Starting_Salary_z > 3 | Starting_Salary_z < ‐3'
+
+data_outliers = data.query('Starting_Salary_z > 3 | Starting_Salary_z < -3') ## identify outliers using temp field Starting_Salary_z we just created
+data_outliers_sort = data_outliers.sort_values(['Starting_Salary_z'], ascending = False)## sort the data
+
+
+## look for first few data with outliers Starting_Salary and Starting_Salary_z
+
+data_outliers_sort[['University_GPA', 'Field_of_Study', 'Internships_Completed', 'Soft_Skills_Score', 'Networking_Score', 'Starting_Salary', 'Gender','Current_Job_Level','Work_Life_Balance','Entrepreneurship','Starting_Salary_z']].head(n=15)
+
+
+print(data.nunique())
+
+
+
+## To detect skewness and identify outliers  we plot the distribution of numerical variables to compare distribution accross groups.
+
+import math
+# Select numeric variables (limit to first 15 if more)
+num_cols = data.select_dtypes(include=['int64', 'float64']).columns[:15]
+
+# Set number of subplot rows and columns (e.g., 3 rows x 5 columns)
+n_cols = 5
+n_rows = math.ceil(len(num_cols) / n_cols)
+
+# Create subplots
+fig, axes = plt.subplots(n_rows, n_cols, figsize=(n_cols * 2.5, n_rows * 2))
+axes = axes.flatten()  # Flatten axes array for easy iteration
+
+# Plot the distribution for each variable
+for i, col in enumerate(num_cols):
+    sns.histplot(data[col], kde=True, ax=axes[i])
+    axes[i].set_title(f'{col}')
+    axes[i].tick_params(labelsize=7)
+
+# Remove any unused subplots
+for j in range(i + 1, len(axes)):
+    fig.delaxes(axes[j])
+
+# Adjust layout to avoid overlap
+plt.tight_layout()
+plt.show()
+
+
+categorical_cols = ['Field_of_Study', 'Current_Job_Level', 'Entrepreneurship']
+
+# subplot in 1 row
+fig, axes = plt.subplots(1, len(categorical_cols), figsize=(20, 4))
+
+# plot categorical distribution
+for i, col in enumerate(categorical_cols):
+    sns.countplot(data=data, x=col, order=data[col].value_counts().index, ax=axes[i])
+    axes[i].set_title(f'{col} Distribution')
+    axes[i].tick_params(axis='x', rotation=45)
+
+# adjust layout
+plt.tight_layout()
+plt.show()
+
+
+display(data.describe())
+
+
+# Select numeric columns
+numeric_data = data.select_dtypes(include='number')
+
+# Get base stats
+summary = numeric_data.describe()
+
+# Add median and mode
+summary.loc['median'] = numeric_data.median()
+summary.loc['mode'] = numeric_data.mode().iloc[0]
+
+# Reorder rows for clarity
+summary = summary.loc[['count', 'mean', 'median', 'mode', 'std', 'min', '25%', '50%', '75%', 'max']]
+
+# Final table: stats as index, features as columns
+display(summary)
+
+
+import plotly.express as px
+import plotly.graph_objects as go
+
+nbins = int(np.sqrt(len(data)))
+
+# Histogram for Starting_Salary
+fig2 = px.histogram(data, x="Starting_Salary",
+                   title="Distribution of Starting Salary",
+                   color_discrete_sequence=['#2D72D2'],
+                   opacity=0.9,nbins=nbins)
+fig2.update_traces(marker_line_color='black', marker_line_width=2)
+fig2.update_layout(font_family="Arial", width=700, height=400)
+
+# Histogram for Career_Satisfaction
+fig1 = px.histogram(data, x="Career_Satisfaction",
+                   title="Distribution of Career Satisfaction",
+                   color_discrete_sequence=['#2D72D2'],
+                   opacity=0.9)
+fig1.update_traces(marker_line_color='black', marker_line_width=2)
+fig1.update_layout(font_family="Arial", width=700, height=400)
+
+fig2.show()
+fig1.show()
+
+
+import plotly.express as px
+import plotly.graph_objects as go
+
+nbins = int(np.sqrt(len(data)))
+
+# Histogram for Starting_Salary
+fig2 = px.histogram(data, x="Starting_Salary",
+                   title="Distribution of Starting Salary",
+                   color_discrete_sequence=['#2D72D2'],
+                   opacity=0.9,nbins=nbins)
+fig2.update_traces(marker_line_color='black', marker_line_width=2)
+fig2.update_layout(font_family="Arial", width=700, height=400)
+
+# Histogram for Career_Satisfaction
+fig1 = px.histogram(data, x="Career_Satisfaction",
+                   title="Distribution of Career Satisfaction",
+                   color_discrete_sequence=['#2D72D2'],
+                   opacity=0.9)
+fig1.update_traces(marker_line_color='black', marker_line_width=2)
+fig1.update_layout(font_family="Arial", width=700, height=400)
+
+fig2.show()
+fig1.show()
+
+
+import plotly.express as px
+import pandas as pd
+
+# Create a new column for plotting purposes
+data['Entrepreneurship_LS'] = data['Entrepreneurship']
+if data['Entrepreneurship_LS'].dtype != 'object':
+    data['Entrepreneurship_LS'] = data['Entrepreneurship_LS'].map({1: 'Yes', 0: 'No'})
+
+# Drop any missing values in required columns
+filtered_data = data[['Field_of_Study', 'Entrepreneurship_LS']].dropna()
+
+
+agg_data = filtered_data.groupby(['Field_of_Study', 'Entrepreneurship_LS']).size().reset_index(name='Count')
+
+
+color_map = {
+    'Yes': '#2D72D2',
+    'No': '#CD4246'
+}
+
+# Create grouped bar chart
+fig = px.bar(
+    agg_data,
+    x='Field_of_Study',
+    y='Count',
+    color='Entrepreneurship_LS',
+    barmode='group',
+    color_discrete_map=color_map,
+    title="Entrepreneurship Distribution by Field of Study"
+)
+
+# Formatting
+fig.update_traces(marker_line_color='black', marker_line_width=1.5)
+fig.update_layout(
+    xaxis_title="Field of Study",
+    yaxis_title="Number of Participants",
+    legend_title="Entrepreneurship Status",
+    font=dict(family="Arial", size=14),
+    title_font=dict(size=16),
+    xaxis_tickangle=45
+)
+
+fig.show()
+# drop Entrepreneurship_LS
+data = data.drop(columns=['Entrepreneurship_LS'])
+
+
+import plotly.express as px
+import pandas as pd
+
+# Convert to numeric where applicable
+data['Starting_Salary'] = pd.to_numeric(data['Starting_Salary'], errors='coerce')
+data['Career_Satisfaction'] = pd.to_numeric(data['Career_Satisfaction'], errors='coerce')
+
+# Aggregate using median salary, grouping by Entrepreneurship
+agg_data = data.groupby(['Career_Satisfaction', 'Entrepreneurship'], as_index=False)['Starting_Salary'].median()
+
+# Define custom colors
+custom_colors = ['#2D72D2', '#CD4246']
+
+# Plot using Plotly
+fig = px.bar(
+    agg_data,
+    x='Career_Satisfaction',
+    y='Starting_Salary',
+    color='Entrepreneurship',
+    barmode='group',
+    color_discrete_sequence=custom_colors,
+    title="Median Starting Salary vs Career Satisfaction by Entrepreneurship Status"
+)
+
+# Add black border
+fig.update_traces(marker_line_color='black', marker_line_width=1.5)
+
+# Customize layout
+fig.update_layout(
+    xaxis_title="Career Satisfaction (1-10)",
+    yaxis_title="Median Starting Salary",
+    legend_title="Entrepreneurship Status",
+    font=dict(family="Arial", size=14),
+    title_font=dict(size=16)
+)
+
+fig.show()
+
+
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+# encoding variables in a new df to explore correlation
+data_corr = data[[
+    'University_GPA', 'Field_of_Study', 'Internships_Completed',
+    'Soft_Skills_Score', 'Networking_Score', 'Starting_Salary',
+    'Current_Job_Level', 'Work_Life_Balance', 'Entrepreneurship'
+]].copy()
+
+data_corr = pd.get_dummies(
+    data_corr,
+    columns=['Field_of_Study', 'Current_Job_Level'],
+    drop_first=False
+)
+
+data_corr['Entrepreneurship'] = data_corr['Entrepreneurship'].map({'Yes': 1, 'No': 0})
+data_corr = data_corr.loc[:, data_corr.std() > 0]
+
+corr = data_corr.corr()
+mask = np.triu(np.ones_like(corr, dtype=bool))
+
+sns.set_theme(style="white", font_scale=1.1)
+plt.figure(figsize=(16, 14))
+
+sns.heatmap(
+    corr,
+    mask=mask,
+    cmap="PuOr",
+    vmin=-0.6,
+    vmax=0.6,
+    center=0,
+    square=True,
+    linewidths=0.75,
+    annot=True,
+    fmt=".2f",
+    annot_kws={"size": 8},
+    cbar_kws={"shrink": 0.8, "label": "Correlation"}
+)
+
+plt.title("Correlation Heatmap Including All Encoded Variables", fontsize=18, weight='bold')
+plt.xticks(rotation=45, ha='right')
+plt.yticks(rotation=0)
+plt.tight_layout()
+plt.show()
+
+
+
+
+# Data types
+print("\nData types:")
+print(data.dtypes)
+
+# Target variable distribution
+print("\nTarget variable distribution:")
+print(data['Entrepreneurship'].value_counts())
+print(data['Entrepreneurship'].value_counts(normalize=True))
+
+
+# Convert categorical variables to numeric for correlation analysis
+# We'll create dummy variables and then include only original numeric features plus dummy variables
+data_encoded = pd.get_dummies(data[['University_GPA', 'Field_of_Study', 'Internships_Completed', 'Soft_Skills_Score', 'Networking_Score', 'Starting_Salary', 'Current_Job_Level','Work_Life_Balance']]
+, columns=['Field_of_Study', 'Current_Job_Level'], drop_first=False)
+
+# Correlation analysis
+# Select only numeric columns
+numeric_columns = data_encoded.select_dtypes(include=['int64', 'float64']).columns
+correlation_matrix = data_encoded[numeric_columns].corr()
+
+# Plot correlation heatmap
+plt.figure(figsize=(14, 12))
+mask = np.triu(np.ones_like(correlation_matrix, dtype=bool))
+cmap = sns.diverging_palette(230, 20, as_cmap=True)
+sns.heatmap(correlation_matrix, mask=mask, cmap=cmap,
+           vmax=.6, vmin=-.6, center=0, annot=True, fmt='.2f',
+           square=True, linewidths=.5)
+plt.title('Correlation Heatmap of Variables', fontsize=16)
+plt.tight_layout()
+plt.savefig('correlation_heatmap.png')
+plt.show()
+
+
+import statsmodels.tools.tools as stattools
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+from imblearn.over_sampling import SMOTE
+
+
+
+#Declare features and target variables
+X = data[['University_GPA', 'Field_of_Study', 'Internships_Completed', 'Soft_Skills_Score', 'Networking_Score', 'Starting_Salary', 'Current_Job_Level','Work_Life_Balance']]
+y = data['Entrepreneurship'].map({'Yes': 1, 'No': 0})
+#y = data['Entrepreneurship']
+
+# Convert to dummy variables
+dummies = pd.get_dummies(X[['Field_of_Study','Current_Job_Level']], prefix=['Field_of_Study','Current_Job_Level'],drop_first=True)
+X = pd.concat([X.drop(['Field_of_Study','Current_Job_Level'], axis=1), dummies], axis=1)
+
+
+# Standardize numerical features (except for dummy variables)
+numerical_features = ['University_GPA', 'Internships_Completed', 'Soft_Skills_Score', 'Networking_Score', 'Starting_Salary','Work_Life_Balance']
+scaler = StandardScaler()
+X[numerical_features] = scaler.fit_transform(X[numerical_features])
+
+# Split the data into training and testing sets (75% training, 25% testing)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, stratify = y, random_state=7)
+
+# Print class distribution before SMOTE
+print("Before SMOTE:\n", y_train.value_counts())
+
+# Apply SMOTE only to training data
+smote = SMOTE(random_state=7)
+X_train_resampled, y_train_resampled = smote.fit_resample(X_train, y_train)
+
+# Print class distribution after SMOTE
+print("After SMOTE:\n", pd.Series(y_train_resampled).value_counts())
+
+
+# Check the shape of X_train and X_test
+X_train.shape, X_test.shape
+
+# check data types in X_train
+X_train.dtypes
+
+# check missing values in X_train,X_test
+X_train.isnull().sum(), X_test.isnull().sum()
+
+#checking X_train
+display(X_train.head())
+
+# combined columns
+data['Social_Score'] = (data['Networking_Score'] + data['Soft_Skills_Score']) / 2
+
+# Preview Social_Score
+print(data[['Social_Score']].head())
+
+
+X_cart = data[['University_GPA', 'Field_of_Study', 'Internships_Completed',
+               'Social_Score', 'Starting_Salary', 'Current_Job_Level','Work_Life_Balance']]
+y_cart = data['Entrepreneurship'].map({'Yes': 1, 'No': 0})
+
+# Convert to dummy variables
+dummies = pd.get_dummies(X_cart[['Field_of_Study','Current_Job_Level']],
+                         prefix=['Field_of_Study','Current_Job_Level'],
+                         drop_first=True)
+# Replace categorical columns with dummies
+X_cart = pd.concat([X_cart.drop(['Field_of_Study', 'Current_Job_Level'], axis=1), dummies], axis=1)
+
+# Split the data into training and testing sets (75%/25%)
+X_cart_train, X_cart_test, y_cart_train, y_cart_test = train_test_split(X_cart,
+                                                                        y_cart, test_size=0.25, stratify = y_cart, random_state=7)
+
+# Print class distribution before SMOTE
+print("Before SMOTE:\n", y_cart_train.value_counts())
+
+# Apply SMOTE only to training data
+smote = SMOTE(random_state=7)
+X_cart_train_resampled, y_cart_train_resampled = smote.fit_resample(X_cart_train, y_cart_train)
+
+# Print class distribution after SMOTE
+print("After SMOTE:\n", pd.Series(y_cart_train_resampled).value_counts())
+
+
+#double checking new feature Social_Score is inclued
+display(X_cart.head())
+
+
+from sklearn.tree import DecisionTreeClassifier, plot_tree
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report
+from statsmodels.tools import tools as stattools
+import matplotlib.pyplot as plt
+
+# Train CART model
+cart_model_clean02 = DecisionTreeClassifier(criterion='gini', max_depth=6, class_weight='balanced', random_state=42)
+cart_model_clean02.fit(X_cart_train_resampled, y_cart_train_resampled)
+
+
+# Check tree depth and leaf count
+print("Tree Depth:", cart_model_clean02.get_depth())
+print("Number of Leaves:", cart_model_clean02.get_n_leaves())
+print("Decision Nodes:", cart_model_clean02.tree_.node_count - cart_model_clean02.get_n_leaves())
+
+
+# Get the feature names from the resampled training set
+X_names = X_cart_train_resampled.columns
+
+plt.figure(figsize=(80, 40))
+plot_tree(
+    cart_model_clean02,
+    feature_names=X_names,  # feature column names
+    class_names=["No", "Yes"],     # label for binary target
+    filled=True,                   # color nodes by class
+    rounded=True,                   # rounded node boxes
+    fontsize=18  #increase fontsize for readibility
+)
+plt.title("CART Decision Tree (Predicting Entrepreneurship)", fontsize=40)
+plt.savefig("cart_tree_plot.png", dpi=600, bbox_inches='tight')  # Save the figure
+plt.show()
+
+from sklearn.metrics import (accuracy_score, precision_score, recall_score,
+                             f1_score, roc_auc_score, confusion_matrix)
+
+# Evaluate the model
+y_pred_clean = cart_model_clean02.predict(X_cart_test)
+y_prob_clean = cart_model_clean02.predict_proba(X_cart_test)[:, 1]
+
+tn, fp, fn, tp = confusion_matrix(y_cart_test, y_pred_clean).ravel()
+
+# Calculate metrics
+accuracy = accuracy_score(y_cart_test, y_pred_clean)
+error_rate = 1 - accuracy
+precision = precision_score(y_cart_test, y_pred_clean, zero_division=0)
+specificity = tn / (tn + fp) if (tn + fp) > 0 else 0
+f1 = f1_score(y_cart_test, y_pred_clean)
+roc_auc = roc_auc_score(y_cart_test, y_prob_clean)
+recall = recall_score(y_cart_test, y_pred_clean, zero_division=0)
+#Build evaluation table
+eval_table = pd.DataFrame({
+    'CART': [
+        round(accuracy, 3),
+        round(error_rate, 3),
+        round(precision, 3),
+        round(specificity, 3),
+        round(recall, 3),
+        round(f1, 3),
+        round(roc_auc, 3)]
+}, index=['Accuracy', 'Error Rate', 'Precision', 'Specificity', 'Recall', 'F1', 'ROC AUC'])
+
+print(eval_table)
+
+
+#Create CART Confusion Matrix
+cart_Clist = pd.crosstab(y_cart_test, y_pred_clean, rownames=['Actual'], colnames=['Predicted'])
+print("\nConfusion Matrix:")
+cart_Clist ['Total'] = cart_Clist .sum(axis =1);cart_Clist .loc['Total'] = cart_Clist .sum();cart_Clist
+
+
+import xgboost as xgb
+
+xgb_model = xgb.XGBClassifier(
+    n_estimators=100,
+    max_depth=4,
+    learning_rate=0.1,
+    eval_metric='logloss',
+    random_state=7)
+xgb_model.fit(X_train_resampled, y_train_resampled)
+
+
+y_pred = xgb_model.predict(X_test)
+y_prob = xgb_model.predict_proba(X_test)[:, 1]
+
+
+# Confusion metrics
+tn, fp, fn, tp = confusion_matrix(y_test, y_pred).ravel()
+accuracy = accuracy_score(y_test, y_pred)
+error_rate = 1 - accuracy
+precision = precision_score(y_test, y_pred, zero_division=0)
+specificity = tn / (tn + fp) if (tn + fp) > 0 else 0
+f1 = f1_score(y_test, y_pred)
+roc_auc = roc_auc_score(y_test, y_prob)
+recall = recall_score(y_test, y_pred, zero_division=0)
+# Evaluation table
+eval_table = pd.DataFrame({
+    'XGBoost': [
+        round(accuracy, 3),
+        round(error_rate, 3),
+        round(precision, 3),
+        round(specificity, 3),
+        round(recall, 3),
+        round(f1, 3),
+        round(roc_auc, 3)
+    ]
+}, index=['Accuracy', 'Error Rate', 'Precision', 'Specificity','Recall', 'F1', 'ROC AUC'])
+
+print(eval_table)
+
+
+
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import confusion_matrix,accuracy_score, confusion_matrix, precision_score, recall_score, f1_score, roc_auc_score
+from sklearn.metrics import confusion_matrix
+
+
+# Create the random forest and train the model on training data
+rfc_model = RandomForestClassifier(n_estimators = 200,criterion="gini",random_state=7).fit(X_train_resampled, y_train_resampled
+
+
+# Evaluate the model
+y_pred = rfc_model.predict(X_test)
+y_prob = rfc_model.predict_proba(X_test)[:, 1]
+
