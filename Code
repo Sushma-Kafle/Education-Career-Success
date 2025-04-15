@@ -545,7 +545,7 @@ from sklearn.metrics import confusion_matrix
 
 
 # Create the random forest and train the model on training data
-rfc_model = RandomForestClassifier(n_estimators = 200,criterion="gini",random_state=7).fit(X_train_resampled, y_train_resampled
+rfc_model = RandomForestClassifier(n_estimators = 200,criterion="gini",random_state=7).fit(X_train_resampled, y_train_resampled)
 
 
 # Evaluate the model
